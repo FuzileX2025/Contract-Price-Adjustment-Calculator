@@ -1,0 +1,214 @@
+import React, { useState } from 'react';
+
+export default function PriceAdjustmentCalculator() {
+  const [items] = useState([
+    { description: "SEALANT: SS 50ML", currentPrice: 270.0 },
+    { description: "SEALANT: GG 310ML", currentPrice: 54.0 },
+    { description: "BEARING: BALL ABC", currentPrice: 543.0 },
+    { description: "BEARING: BCDE", currentPrice: 332.85 },
+    { description: "BEARING: ZTTBBYT", currentPrice: 215000.0 },
+    { description: "BEARING: TYU", currentPrice: 280.69 },
+  ]);
+
+  const [roe1, setRoe1] = useState(1);
+  const [roe2, setRoe2] = useState(1);
+  const [factoryAdjustment, setFactoryAdjustment] = useState(0.25);
+  const [formData, setFormData] = useState({
+    verified: { name: "", designation: "", date: "" },
+    approved: { name: "", designation: "", date: "" },
+  });
+
+  const calculateNewPrice = (currentPrice) => {
+    if (roe2 <= 0) return { newPrice: 0, percentageIncrease: 0 };
+    
+    const adjustmentValue = currentPrice * (factoryAdjustment / 100);
+    const exchangeFactor = 0.1 + 0.9 * (roe1 / roe2);
+    const newPrice = currentPrice * exchangeFactor + adjustmentValue;
+    const percentageIncrease = ((newPrice - currentPrice) / currentPrice) * 100;
+    
+    return { 
+      newPrice: Math.max(newPrice, 0), 
+      percentageIncrease: Math.max(percentageIncrease, 0) 
+    };
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    const submissionData = {
+      parameters: { roe1, roe2, factoryAdjustment },
+      adjustments: items.map(item => ({
+        ...item,
+        ...calculateNewPrice(item.currentPrice)
+      })),
+      approvals: formData
+    };
+    console.log('Submission Data:', submissionData);
+    alert('Contract adjustment submitted successfully!\nCheck console for data output.');
+  };
+
+  const handleFormChange = (section, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [section]: { ...prev[section], [field]: value }
+    }));
+  };
+
+  return (
+    <div className="p-6 bg-gray-100 min-h-screen max-w-6xl mx-auto">
+      <h1 className="text-3xl font-bold mb-8 text-blue-800 text-center">
+        Contract Price Adjustment System
+      </h1>
+
+      <form onSubmit={handleFormSubmit} className="space-y-8">
+        {/* Adjustment Parameters Section */}
+        <section className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-6">Adjustment Parameters</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Current RoE</label>
+              <input
+                type="number"
+                value={roe1}
+                min="0.0001"
+                step="0.0001"
+                onChange={(e) => setRoe1(Math.max(parseFloat(e.target.value) || 0.0001, 0.0001))}
+                className="input-field"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Previous RoE</label>
+              <input
+                type="number"
+                value={roe2}
+                min="0.0001"
+                step="0.0001"
+                onChange={(e) => setRoe2(Math.max(parseFloat(e.target.value) || 0.0001, 0.0001))}
+                className="input-field"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Factory Adjustment (%)</label>
+              <input
+                type="number"
+                value={factoryAdjustment}
+                min="0"
+                max="100"
+                step="0.1"
+                onChange={(e) => setFactoryAdjustment(Math.min(Math.max(parseFloat(e.target.value) || 0, 0), 100))}
+                className="input-field"
+                required
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Price Adjustments Section */}
+        <section className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-6">Price Adjustments</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="table-header">Item Description</th>
+                  <th className="table-header text-right">Current Price</th>
+                  <th className="table-header text-right">Increase (%)</th>
+                  <th className="table-header text-right">New Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, index) => {
+                  const { newPrice, percentageIncrease } = calculateNewPrice(item.currentPrice);
+                  return (
+                    <tr key={index} className="border-t hover:bg-gray-50">
+                      <td className="table-data">{item.description}</td>
+                      <td className="table-data text-right">R {item.currentPrice.toFixed(2)}</td>
+                      <td className="table-data text-right text-green-600">
+                        {percentageIncrease.toFixed(2)}%
+                      </td>
+                      <td className="table-data text-right font-semibold">
+                        R {newPrice.toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Approval Form Section */}
+        <section className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-6">Approval Process</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Verified By */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Verification</h3>
+              <input
+                type="text"
+                value={formData.verified.name}
+                onChange={(e) => handleFormChange('verified', 'name', e.target.value)}
+                className="input-field"
+                placeholder="Verifier Name"
+                required
+              />
+              <input
+                type="text"
+                value={formData.verified.designation}
+                onChange={(e) => handleFormChange('verified', 'designation', e.target.value)}
+                className="input-field"
+                placeholder="Verifier Designation"
+                required
+              />
+              <input
+                type="date"
+                value={formData.verified.date}
+                onChange={(e) => handleFormChange('verified', 'date', e.target.value)}
+                className="input-field"
+                required
+              />
+            </div>
+
+            {/* Approved By */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Approval</h3>
+              <input
+                type="text"
+                value={formData.approved.name}
+                onChange={(e) => handleFormChange('approved', 'name', e.target.value)}
+                className="input-field"
+                placeholder="Approver Name"
+                required
+              />
+              <input
+                type="text"
+                value={formData.approved.designation}
+                onChange={(e) => handleFormChange('approved', 'designation', e.target.value)}
+                className="input-field"
+                placeholder="Approver Designation"
+                required
+              />
+              <input
+                type="date"
+                value={formData.approved.date}
+                onChange={(e) => handleFormChange('approved', 'date', e.target.value)}
+                className="input-field"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="mt-8 flex justify-end">
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Submit Final Approval
+            </button>
+          </div>
+        </section>
+      </form>
+    </div>
+  );
+}
